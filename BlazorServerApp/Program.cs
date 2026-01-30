@@ -25,6 +25,9 @@ namespace BlazorServerApp
 
             var app = builder.Build();
 
+            // Seed sample data (so products/providers exist for testing)
+            //SeedData.InitializeAsync(app.Services).GetAwaiter().GetResult();
+
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())
             {

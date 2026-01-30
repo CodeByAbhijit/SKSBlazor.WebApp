@@ -1,0 +1,33 @@
+@inject BlazorServerApp.Services.IOrderService OrderService
+
+<div>
+    <input class="form-control" @bind="Query" @oninput="OnSearch" placeholder="Supplier name..." />
+    <ul class="list-group mt-1" style="max-height:200px; overflow:auto">
+        @foreach (var p in Providers)
+        {
+            <li class="list-group-item list-group-item-action"
+                @onclick="() => SelectProvider(p.ProviderId)">
+                <strong>@p.CompanyName</strong><br />
+                @p.ContactFirstName @p.ContactLastName
+            </li>
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter] public EventCallback<int> OnProviderSelected { get; set; }
+
+    private string Query { get; set; } = "";
+    private List<BlazorServerApp.Models.Provider> Providers { get; set; } = new();
+
+    private async Task OnSearch(ChangeEventArgs e)
+    {
+        Providers = await OrderService.SearchProvidersAsync(Query);
+        StateHasChanged();
+    }
+
+    private async Task SelectProvider(int id)
+    {
+        await OnProviderSelected.InvokeAsync(id);
+    }
+}

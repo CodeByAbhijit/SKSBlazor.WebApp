@@ -13,6 +13,8 @@ namespace BlazorServerApp.Services
     public class OrderService : IOrderService
     {
         private readonly AppDbContext _db;
+        private const bool UseDatabase = false;
+
         public OrderService(AppDbContext db)
         {
             _db = db;
@@ -43,35 +45,83 @@ namespace BlazorServerApp.Services
 
         public async Task<List<Provider>> SearchProvidersAsync(string name)
         {
-            return await _db.Providers
-                .Where(p => string.IsNullOrEmpty(name) ||
-                            EF.Functions.Like(p.CompanyName, $"%{name}%") ||
-                            EF.Functions.Like(p.ContactFirstName, $"%{name}%") ||
-                            EF.Functions.Like(p.ContactLastName, $"%{name}%"))
-                .ToListAsync();
+            if (!UseDatabase)
+            {
+                return await Task.FromResult(new List<Provider>
+                {
+                    new Provider
+                    {
+                        ProviderId = 1,
+                        CompanyName = "ABC Supplier",
+                        ContactFirstName = "John",
+                        ContactLastName = "Doe"
+                    },
+                    new Provider
+                    {
+                        ProviderId = 2,
+                        CompanyName = "XYZ Supplier",
+                        ContactFirstName = "Jane",
+                        ContactLastName = "Smith"
+                    }
+                });
+            }
+
+            //// The following code is unreachable if UseDatabase is always false.
+            //// To fix the CS0162 warning, you can either remove the unreachable code
+            //// or ensure that UseDatabase can be true in some scenarios.
+            //return await _db.Providers
+            //    .Where(p => string.IsNullOrEmpty(name) ||
+            //                EF.Functions.Like(p.CompanyName, $"%{name}%") ||
+            //                EF.Functions.Like(p.ContactFirstName, $"%{name}%") ||
+            //                EF.Functions.Like(p.ContactLastName, $"%{name}%"))
+            //    .ToListAsync();
         }
 
         public async Task<List<Product>> SearchProductsAsync(string q)
         {
-            return await _db.Products
-                .Where(p => string.IsNullOrEmpty(q) ||
-                            EF.Functions.Like(p.Name, $"%{q}%") ||
-                            EF.Functions.Like(p.Code, $"%{q}%"))
-                .ToListAsync();
+            if (!UseDatabase)
+            {
+                return await Task.FromResult(new List<Product>
+                {
+                    new Product { ProductId = 1, Code = "P001", Name = "Keyboard", UnitPrice = 500 },
+                    new Product { ProductId = 2, Code = "P002", Name = "Mouse", UnitPrice = 300 }
+                });
+            }
+
+            //return await _db.Products
+            //    .Where(p => string.IsNullOrEmpty(q) ||
+            //                EF.Functions.Like(p.Name, $"%{q}%") ||
+            //                EF.Functions.Like(p.Code, $"%{q}%"))
+            //    .ToListAsync();
         }
 
         public async Task<OrderReception> CreateOrderDraftAsync(int providerId, string receivedBy)
         {
-            var order = new OrderReception
+            if (!UseDatabase)
             {
-                ProviderId = providerId,
-                ReceivedBy = receivedBy,
-                OrderDate = DateTime.UtcNow,
-                Status = "RECEIVED"
-            };
-            _db.OrderReceptions.Add(order);
-            await _db.SaveChangesAsync();
-            return order;
+                // Use a static readonly instance for default draft to avoid repeated allocations if possible
+                var draft = new OrderReception
+                {
+                    OrderReceptionId = 1,
+                    ProviderId = providerId,
+                    ReceivedBy = receivedBy,
+                    OrderDate = DateTime.UtcNow,
+                    Status = "RECEIVED",
+                    Lines = new List<OrderLine>() // Initialize to avoid null reference
+                };
+                return await Task.FromResult(draft); // Fix: Added 'await' to resolve CS0029
+            }
+
+            //var order = new OrderReception
+            //{
+            //    ProviderId = providerId,
+            //    ReceivedBy = receivedBy,
+            //    OrderDate = DateTime.UtcNow,
+            //    Status = "RECEIVED"
+            //};
+            //_db.OrderReceptions.Add(order);
+            //await _db.SaveChangesAsync();
+            //return order;
         }
 
         public async Task SaveOrderAsync(OrderReception order)

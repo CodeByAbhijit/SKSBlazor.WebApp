@@ -1,0 +1,51 @@
+@inject BlazorServerApp.Services.IOrderService OrderService
+@using BlazorServerApp.Models
+
+<div>
+    <div class="d-flex gap-2">
+        <input class="form-control" placeholder="Supplier name..." @bind="Query" @oninput="OnInput" />
+        <button class="btn btn-outline-secondary" @onclick="Search">...</button>
+    </div>
+
+    <div class="mt-2">
+        <div class="d-flex gap-2">
+            <input class="form-control" placeholder="Contact first" @bind="ContactFirst" @oninput="OnInput" />
+            <input class="form-control" placeholder="Contact last" @bind="ContactLast" @oninput="OnInput" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<int> OnProviderSelected { get; set; }
+    private string Query { get; set; } = "";
+    private string ContactFirst { get; set; } = "";
+    private string ContactLast { get; set; } = "";
+
+    private Timer? debounce;
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        // Debounce input to avoid excessive calls
+        debounce?.Dispose();
+        debounce = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await Search();
+            });
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task Search()
+    {
+        var q = Query; // For now we use single query string; you can expand to use contact fields too
+        // Call the OrderService.SearchProvidersAsync
+        var res = await OrderService.SearchProvidersAsync(q);
+        // bubble result: store into parent via direct method? -- parent page can also call SearchProviders on load; for simplicity we raise event with first provider if exists
+        if (res.Any())
+        {
+            // choose the first as selection suggestion
+            await OnProviderSelected.InvokeAsync(res[0].ProviderId);
+        }
+    }
+}

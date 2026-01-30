@@ -1,0 +1,302 @@
+@page "/order-reception"
+@inject BlazorServerApp.Services.IOrderService OrderService
+@using BlazorServerApp.Components
+@using BlazorServerApp.Models
+
+<h3>Add Stock Order (Order Reception)</h3>
+
+<div class="order-grid">
+    <!-- Left/top: Supplier search frame -->
+    <section class="supplier-frame">
+        <h5>Search supplier</h5>
+        <ProviderSearch @ref="providerSearch" OnProviderSelected="OnProviderSelected" />
+
+        <!-- provider list (large) -->
+        <div class="provider-list mt-2">
+            @if (Providers != null && Providers.Any())
+            {
+                <ul class="list-group">
+                    @* @foreach (var p in Providers)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-start"
+                            @onclick="() => SelectProviderFromList(p)">
+                            <div>
+                                <strong>@p.CompanyName</strong><br />
+                                <small>@p.ContactFirstName @p.ContactLastName</small>
+                            </div>
+                            <div><button class="btn btn-sm btn-outline-secondary" @onclick:stopPropagation="true" @onclick="() => UseProvider(p)">...</button></div>
+                        </li>
+                    } *@
+                </ul>
+            }
+            else
+            {
+                <div class="alert alert-light">No providers. Use search box above.</div>
+            }
+        </div>
+    </section>
+
+    <!-- Right/top: Notes and order header -->
+    <section class="notes-frame">
+        <div class="order-header mb-2">
+            <div><label>Order ID:</label> <span class="badge bg-secondary">@OrderIdDisplay</span></div>
+            <div><label>Received:</label> <span>@(OrderDateDisplay)</span></div>
+            <div><label>Received by:</label> <span>@ReceivedBy</span></div>
+        </div>
+
+        <div>
+            <label>Supplier Name</label>
+            <input class="form-control" @bind="SelectedProviderName" readonly />
+
+            <div class="d-flex gap-2 mt-2">
+                <div class="flex-fill">
+                    <label>Contact name</label>
+                    <input class="form-control" @bind="SelectedProviderContactFirst" readonly />
+                </div>
+                <div class="flex-fill">
+                    <label>Contact last name</label>
+                    <input class="form-control" @bind="SelectedProviderContactLast" readonly />
+                </div>
+            </div>
+
+            <label class="mt-3">Notes</label>
+            <textarea class="form-control" rows="4" @bind="Notes"></textarea>
+        </div>
+    </section>
+
+    <!-- Full width product grid area -->
+    <section class="products-frame">
+        <div class="d-flex mb-2 align-items-center">
+            <input class="form-control me-2" placeholder="Search product..." @bind="ProductQuery" @oninput="OnProductSearch" />
+            <button class="btn btn-outline-secondary" @onclick="ToggleProductPicker">@((showProductPicker ? "Close" : "Add"))</button>
+        </div>
+
+        @if (showProductPicker)
+        {
+            <div class="product-picker card p-2 mb-3">
+                @if (ProductResults?.Any() ?? false)
+                {
+                    <table class="table table-sm">
+                        <thead><tr><th>Code</th><th>Name</th><th>Unit Price</th><th></th></tr></thead>
+                        <tbody>
+                            @foreach (var p in ProductResults)
+                            {
+                                <tr>
+                                    <td>@p.Code</td>
+                                    <td>@p.Name</td>
+                                    <td>@p.UnitPrice.ToString("C")</td>
+                                    <td><button class="btn btn-sm btn-primary" @onclick="() => AddProductInline(p)">Add</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="text-muted p-2">No products found</div>
+                }
+            </div>
+        }
+
+        <div class="table-responsive products-grid">
+            <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:90px">Qty</th>
+                        <th>Code</th>
+                        <th>Product</th>
+                        <th style="width:140px">Unit Price</th>
+                        <th style="width:120px">Line Total</th>
+                        <th style="width:80px"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Lines)
+                    {
+                        <tr>
+                            <td><input type="number" class="form-control" style="width:80px" @bind="line.Quantity" @oninput="e => UpdateLine(line)" /></td>
+                            <td>@line.Product?.Code</td>
+                            <td>@line.Product?.Name</td>
+                            <td><input type="number" class="form-control" step="0.01" style="width:120px" @bind="line.UnitPrice" @oninput="e => UpdateLine(line)" /></td>
+                            <td class="text-end">@line.LineTotal.ToString("C")</td>
+                            <td><button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- Bottom totals area -->
+    <section class="totals-frame">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <div>Line quantity: <strong>@LineQuantity</strong></div>
+            </div>
+
+            <div class="totals-card">
+                <div class="d-flex gap-2 mb-1">
+                    <label class="w-50">Sales Tax (%)</label>
+                    <input class="form-control w-50" type="number" @bind="SalesTax" @oninput="e => RecalculateTotals()" />
+                </div>
+                <div class="d-flex gap-2 mb-2">
+                    <label class="w-50">Freight</label>
+                    <input class="form-control w-50" type="number" @bind="Freight" @oninput="e => RecalculateTotals()" />
+                </div>
+
+                <div class="text-end">
+                    <div>Sub Total: @SubTotal.ToString("C")</div>
+                    <div>Total Tax: @TotalTax.ToString("C")</div>
+                    <div><strong>Total: @Total.ToString("C")</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button class="btn btn-primary" @onclick="Save">Save</button>
+            <button class="btn btn-success ms-2" @onclick="Approve" disabled="@(!CanApprove)">Approve (Add to Inventory)</button>
+        </div>
+    </section>
+</div>
+
+@code {
+    // provider references
+    private ProviderSearch? providerSearch;
+    private List<Provider> Providers = new();
+    private Provider? selectedProvider;
+
+    // order header
+    private int currentOrderId = 0;
+    private string OrderIdDisplay => currentOrderId == 0 ? "-" : currentOrderId.ToString();
+    private string ReceivedBy = "system";
+    private string OrderDateDisplay = DateTime.UtcNow.ToString("g");
+
+    // supplier details (bound to UI)
+    private string SelectedProviderName = "";
+    private string SelectedProviderContactFirst = "";
+    private string SelectedProviderContactLast = "";
+
+    // notes
+    private string Notes { get; set; } = "";
+
+    // product selection
+    private bool showProductPicker = false;
+    private string ProductQuery = "";
+    private List<Product>? ProductResults;
+    private List<OrderLine> Lines = new();
+
+    // totals
+    private decimal SalesTax { get; set; } = 0m;
+    private decimal Freight { get; set; } = 0m;
+    private decimal SubTotal { get; set; } = 0m;
+    private decimal TotalTax { get; set; } = 0m;
+    private decimal Total { get; set; } = 0m;
+    private int LineQuantity { get; set; } = 0;
+
+    private bool CanApprove => currentOrderId != 0 && Lines.Any();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // optionally load all providers to show list initially
+        Providers = await OrderService.SearchProvidersAsync("");
+    }
+
+    private async Task OnProviderSelected(int providerId)
+    {
+        selectedProvider = Providers.FirstOrDefault(p => p.ProviderId == providerId) ?? await OrderService.SearchProvidersAsync("").ContinueWith(t => t.Result.FirstOrDefault(p => p.ProviderId == providerId));
+        FillProviderFields(selectedProvider);
+        // create draft
+        var draft = await OrderService.CreateOrderDraftAsync(providerId, ReceivedBy);
+        currentOrderId = draft.OrderReceptionId;
+        OrderDateDisplay = draft.OrderDate.ToString("g");
+    }
+
+    private void FillProviderFields(Provider? p)
+    {
+        if (p == null) return;
+        SelectedProviderName = p.CompanyName;
+        SelectedProviderContactFirst = p.ContactFirstName;
+        SelectedProviderContactLast = p.ContactLastName;
+    }
+
+    private void SelectProviderFromList(Provider p) => FillProviderFields(p);
+    private void UseProvider(Provider p) => OnProviderSelected(p.ProviderId);
+
+    private void ToggleProductPicker()
+    {
+        showProductPicker = !showProductPicker;
+        if (showProductPicker) _ = OnProductSearch(null);
+    }
+
+    private async Task OnProductSearch(ChangeEventArgs? _)
+    {
+        ProductResults = await OrderService.SearchProductsAsync(ProductQuery ?? "");
+        StateHasChanged();
+    }
+
+    private void AddProductInline(Product p)
+    {
+        var existing = Lines.FirstOrDefault(l => l.ProductId == p.ProductId);
+        if (existing != null) existing.Quantity += 1;
+        else
+        {
+            Lines.Add(new OrderLine
+            {
+                ProductId = p.ProductId,
+                Product = p,
+                Quantity = 1,
+                UnitPrice = p.UnitPrice
+            });
+        }
+        RecalculateTotals();
+    }
+
+    private void UpdateLine(OrderLine line)
+    {
+        if (line.Quantity < 0) line.Quantity = 0;
+        RecalculateTotals();
+    }
+
+    private void RemoveLine(OrderLine line)
+    {
+        Lines.Remove(line);
+        RecalculateTotals();
+    }
+
+    private void RecalculateTotals()
+    {
+        SubTotal = Lines.Sum(l => l.LineTotal);
+        LineQuantity = Lines.Sum(l => l.Quantity);
+        TotalTax = SubTotal * (SalesTax / 100m);
+        Total = SubTotal + TotalTax + Freight;
+    }
+
+    private async Task Save()
+    {
+        if (selectedProvider == null) { /* show message */ return; }
+
+        var order = new BlazorServerApp.Models.OrderReception
+        {
+            OrderReceptionId = currentOrderId,
+            ProviderId = selectedProvider.ProviderId,
+            ReceivedBy = ReceivedBy,
+            OrderDate = DateTime.UtcNow,
+            Notes = Notes,
+            FreightCharge = Freight,
+            SalesTaxRate = SalesTax,
+            Lines = Lines
+        };
+
+        await OrderService.SaveOrderAsync(order);
+        currentOrderId = order.OrderReceptionId;
+    }
+
+    private async Task Approve()
+    {
+        if (!CanApprove) return;
+        await OrderService.ApproveOrderAsync(currentOrderId, ReceivedBy);
+        // refresh
+        Providers = await OrderService.SearchProvidersAsync("");
+        RecalculateTotals();
+    }
+}

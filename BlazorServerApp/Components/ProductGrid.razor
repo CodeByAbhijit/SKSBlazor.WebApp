@@ -1,0 +1,91 @@
+@using BlazorServerApp.Models
+@inject BlazorServerApp.Services.IOrderService OrderService
+
+<div>
+    <div class="d-flex mb-2">
+        <input class="form-control me-2" placeholder="Search product..." @bind="SearchTerm" />
+        <button class="btn btn-secondary" @onclick="OpenAddProduct">Add</button>
+    </div>
+
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Qty</th>
+                <th>Code</th>
+                <th>Product</th>
+                <th>Unit Price</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Lines)
+            {
+                <tr>
+                    <td><input type="number" class="form-control" style="width:100px" @bind="line.Quantity" @oninput="@(e => UpdateLine(line))" /></td>
+                    <td>@line.Product?.Code</td>
+                    <td>@line.Product?.Name</td>
+                    <td><input type="number" step="0.01" class="form-control" style="width:120px" @bind="line.UnitPrice" @oninput="@(e => UpdateLine(line))" /></td>
+                    <td>@line.LineTotal.ToString("C")</td>
+                    <td><button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<AddProductModal @ref="addModal" OnProductSelected="AddProductLine" />
+
+@code {
+    private AddProductModal? addModal;
+    private string SearchTerm { get; set; } = "";
+    public List<OrderLine> Lines { get; set; } = new();
+    public int LineCount => Lines.Count;
+
+    public List<OrderLine> GetLines() => Lines;
+
+    public void AddProductLine(BlazorServerApp.Models.Product product)
+    {
+        var existing = Lines.FirstOrDefault(l => l.ProductId == product.ProductId);
+        if (existing != null)
+        {
+            existing.Quantity += 1;
+        }
+        else
+        {
+            Lines.Add(new OrderLine
+            {
+                ProductId = product.ProductId,
+                Product = product,
+                Quantity = 1,
+                UnitPrice = product.UnitPrice
+            });
+        }
+        NotifyChange();
+    }
+
+    private void UpdateLine(OrderLine line)
+    {
+        // line.LineTotal property calculates automatically
+        NotifyChange();
+    }
+
+    private void RemoveLine(OrderLine line)
+    {
+        Lines.Remove(line);
+        NotifyChange();
+    }
+
+    private void NotifyChange()
+    {
+        OnLinesChanged?.Invoke(Lines);
+        StateHasChanged();
+    }
+
+    [Parameter] public Action<List<OrderLine>>? OnLinesChanged { get; set; }
+
+    private async Task OpenAddProduct()
+    {
+        if (addModal != null) await addModal.Show();
+    }
+}
