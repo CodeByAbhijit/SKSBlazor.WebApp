@@ -31,16 +31,16 @@ The goal is to incrementally migrate:
 ## Screenshots
 
 ### Login
-![Login](Docs/screenshots/login.png)
+![Login](Docs/screenshots/login.PNG)
 
 ### Home
-![Home](Docs/screenshots/home.png)
+![Home](Docs/screenshots/home.PNG)
 
 ### Products
-![Products](Docs/screenshots/products.png)
+![Products](Docs/screenshots/products.PNG)
 
 ### Orders Approval
-![Orders](Docs/screenshots/orders.png)
+![Orders](Docs/screenshots/orders.PNG)
 
 ---
 
