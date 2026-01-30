@@ -1,0 +1,44 @@
+@using Microsoft.AspNetCore.Components.Forms
+@page "/login"
+@inherits FrmLoginBase
+
+<h3>Login</h3>
+
+<div class="card">
+  <div class="card-body">
+    <EditForm Model="@Model" OnValidSubmit="HandleValidSubmit" FormName="LoginForm">
+      <DataAnnotationsValidator />
+      <ValidationSummary />
+      <div class="mb-3">
+        <label for="username" class="form-label">User Name</label>
+        <InputText id="username" 
+        class="form-control" 
+        autocomplete="username"
+        @bind-Value="Model.UserName"/>
+        <ValidationMessage For="@(() => Model.UserName)" />
+      </div>
+
+      <div class="mb-3">
+        <label for="password" class="form-label">Password</label>
+        <InputText id="password" 
+        type="password" 
+        class="form-control" 
+        autocomplete="current-password"
+        @bind-Value="Model.Password" />
+        <ValidationMessage For="@(() => Model.Password)" />
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" disabled="@IsProcessing">OK</button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+      </div>
+
+      <div class="mt-3" aria-live="polite">
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <div class="alert @MessageCss">@Message</div>
+        }
+      </div>
+    </EditForm>
+  </div>
+</div>
