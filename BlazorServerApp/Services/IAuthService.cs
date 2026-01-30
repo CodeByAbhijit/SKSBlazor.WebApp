@@ -2,7 +2,11 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-public interface IAuthService
+namespace BlazorServerApp.Services
 {
-    Task<bool> LoginAsync(string userName, string password, CancellationToken cancellationToken = default);
+    public interface IAuthService
+    {
+        Task<bool> LoginAsync(string userName, string password, CancellationToken cancellationToken = default);
+    }
 }
+

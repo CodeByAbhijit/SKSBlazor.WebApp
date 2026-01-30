@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Threading;
+using BlazorServerApp.Services;
 
 public partial class ProductsBase : ComponentBase
 {

@@ -1,4 +1,7 @@
 using BlazorServerApp.Components;
+using BlazorServerApp.Data;
+using BlazorServerApp.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorServerApp
 {
@@ -15,6 +18,9 @@ namespace BlazorServerApp
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IProductService, ProductService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
+
+            builder.Services.AddDbContext<AppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
             var app = builder.Build();
