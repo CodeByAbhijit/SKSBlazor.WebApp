@@ -1,302 +1,301 @@
-@page "/order-reception"
-@inject BlazorServerApp.Services.IOrderService OrderService
-@using BlazorServerApp.Components
+﻿@page "/order-reception"
 @using BlazorServerApp.Models
 
-<h3>Add Stock Order (Order Reception)</h3>
+<style>
+    /* ================= VB6 GLOBAL ================= */
+    .vb-form {
+        width: 820px;
+        margin: 16px auto;
+        font-family: "MS Sans Serif", Tahoma, Arial, sans-serif;
+        font-size: 11px;
+        color: #000;
+    }
 
-<div class="order-grid">
-    <!-- Left/top: Supplier search frame -->
-    <section class="supplier-frame">
-        <h5>Search supplier</h5>
-        <ProviderSearch @ref="providerSearch" OnProviderSelected="OnProviderSelected" />
+    .vb-title {
+        height: 28px;
+        background: linear-gradient(#cdddf6, #9fbce6);
+        border-top: 1px solid #ffffff;
+        border-left: 1px solid #ffffff;
+        border-right: 1px solid #4a6ea9;
+        border-bottom: 1px solid #4a6ea9;
+        padding: 4px 8px;
+        font-weight: bold;
+    }
 
-        <!-- provider list (large) -->
-        <div class="provider-list mt-2">
-            @if (Providers != null && Providers.Any())
-            {
-                <ul class="list-group">
-                    @* @foreach (var p in Providers)
-                    {
-                        <li class="list-group-item d-flex justify-content-between align-items-start"
-                            @onclick="() => SelectProviderFromList(p)">
-                            <div>
-                                <strong>@p.CompanyName</strong><br />
-                                <small>@p.ContactFirstName @p.ContactLastName</small>
-                            </div>
-                            <div><button class="btn btn-sm btn-outline-secondary" @onclick:stopPropagation="true" @onclick="() => UseProvider(p)">...</button></div>
-                        </li>
-                    } *@
-                </ul>
-            }
-            else
-            {
-                <div class="alert alert-light">No providers. Use search box above.</div>
-            }
-        </div>
-    </section>
+    /* ================= BODY ================= */
+    .vb-body {
+        border: 1px solid #999;
+        background: #f2f2f2;
+        padding: 8px;
+        height: 760px;
+        box-sizing: border-box;
+    }
 
-    <!-- Right/top: Notes and order header -->
-    <section class="notes-frame">
-        <div class="order-header mb-2">
-            <div><label>Order ID:</label> <span class="badge bg-secondary">@OrderIdDisplay</span></div>
-            <div><label>Received:</label> <span>@(OrderDateDisplay)</span></div>
-            <div><label>Received by:</label> <span>@ReceivedBy</span></div>
-        </div>
+    /* ================= FRAMES ================= */
+    .frame {
+        background: #f0f0f0;
+        padding: 6px;
+        margin-bottom: 6px;
+        border-top: 1px solid #ffffff;
+        border-left: 1px solid #ffffff;
+        border-right: 1px solid #7a7a7a;
+        border-bottom: 1px solid #7a7a7a;
+    }
 
-        <div>
-            <label>Supplier Name</label>
-            <input class="form-control" @bind="SelectedProviderName" readonly />
+    .vb-caption {
+        margin-bottom: 6px;
+    }
 
-            <div class="d-flex gap-2 mt-2">
-                <div class="flex-fill">
-                    <label>Contact name</label>
-                    <input class="form-control" @bind="SelectedProviderContactFirst" readonly />
-                </div>
-                <div class="flex-fill">
-                    <label>Contact last name</label>
-                    <input class="form-control" @bind="SelectedProviderContactLast" readonly />
-                </div>
-            </div>
+    /* ================= ROWS ================= */
+    .vb-row {
+        margin-bottom: 6px;
+        white-space: nowrap;
+    }
 
-            <label class="mt-3">Notes</label>
-            <textarea class="form-control" rows="4" @bind="Notes"></textarea>
-        </div>
-    </section>
+    /* ================= CONTROLS ================= */
+    .label {
+        display: inline-block;
+        width: 100px;
+        vertical-align: middle;
+    }
 
-    <!-- Full width product grid area -->
-    <section class="products-frame">
-        <div class="d-flex mb-2 align-items-center">
-            <input class="form-control me-2" placeholder="Search product..." @bind="ProductQuery" @oninput="OnProductSearch" />
-            <button class="btn btn-outline-secondary" @onclick="ToggleProductPicker">@((showProductPicker ? "Close" : "Add"))</button>
-        </div>
+    input.vb-input {
+        height: 18px;
+        padding: 1px 3px;
+        font-size: 11px;
+        border-top: 1px solid #7a7a7a;
+        border-left: 1px solid #7a7a7a;
+        border-right: 1px solid #ffffff;
+        border-bottom: 1px solid #ffffff;
+    }
 
-        @if (showProductPicker)
-        {
-            <div class="product-picker card p-2 mb-3">
-                @if (ProductResults?.Any() ?? false)
-                {
-                    <table class="table table-sm">
-                        <thead><tr><th>Code</th><th>Name</th><th>Unit Price</th><th></th></tr></thead>
-                        <tbody>
-                            @foreach (var p in ProductResults)
-                            {
-                                <tr>
-                                    <td>@p.Code</td>
-                                    <td>@p.Name</td>
-                                    <td>@p.UnitPrice.ToString("C")</td>
-                                    <td><button class="btn btn-sm btn-primary" @onclick="() => AddProductInline(p)">Add</button></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-                else
-                {
-                    <div class="text-muted p-2">No products found</div>
-                }
-            </div>
+        input.vb-input.short {
+            width: 150px;
         }
 
-        <div class="table-responsive products-grid">
-            <table class="table table-bordered table-sm">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:90px">Qty</th>
-                        <th>Code</th>
-                        <th>Product</th>
-                        <th style="width:140px">Unit Price</th>
-                        <th style="width:120px">Line Total</th>
-                        <th style="width:80px"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var line in Lines)
-                    {
-                        <tr>
-                            <td><input type="number" class="form-control" style="width:80px" @bind="line.Quantity" @oninput="e => UpdateLine(line)" /></td>
-                            <td>@line.Product?.Code</td>
-                            <td>@line.Product?.Name</td>
-                            <td><input type="number" class="form-control" step="0.01" style="width:120px" @bind="line.UnitPrice" @oninput="e => UpdateLine(line)" /></td>
-                            <td class="text-end">@line.LineTotal.ToString("C")</td>
-                            <td><button class="btn btn-sm btn-danger" @onclick="() => RemoveLine(line)">Remove</button></td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-    </section>
+    textarea.vb-textarea {
+        width: 100%;
+        height: 80px;
+        resize: none;
+        border-top: 1px solid #7a7a7a;
+        border-left: 1px solid #7a7a7a;
+        border-right: 1px solid #ffffff;
+        border-bottom: 1px solid #ffffff;
+    }
 
-    <!-- Bottom totals area -->
-    <section class="totals-frame">
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <div>Line quantity: <strong>@LineQuantity</strong></div>
+    /* ================= LIST ================= */
+    .providers-list {
+        height: 120px;
+        background: #ffffff;
+        overflow-y: auto;
+        border-top: 1px solid #7a7a7a;
+        border-left: 1px solid #7a7a7a;
+        border-right: 1px solid #ffffff;
+        border-bottom: 1px solid #ffffff;
+    }
+
+    .provider-item {
+        padding: 4px 6px;
+    }
+
+        .provider-item:hover {
+            background: #cdddf6;
+        }
+
+    /* ================= PRODUCT ================= */
+    .product-input {
+        width: 720px;
+        height: 20px;
+        border: 1px solid #777;
+    }
+
+    .product-grid {
+        height: 300px;
+        background: #808080;
+        border-top: 1px solid #404040;
+        border-left: 1px solid #404040;
+        border-right: 1px solid #c0c0c0;
+        border-bottom: 1px solid #c0c0c0;
+    }
+
+    /* ================= TOTALS ================= */
+    .vb-totals {
+        display: flex;
+        gap: 24px;
+    }
+
+    .tot-left, .tot-right {
+        width: 50%;
+    }
+
+    .tot-right {
+        border-left: 1px dotted #aaa;
+        padding-left: 12px;
+    }
+
+    /* ================= BUTTONS ================= */
+    .btn-flat,
+    .btn-ellipsis {
+        font-size: 11px;
+        padding: 3px 12px;
+        background: #e6e6e6;
+        cursor: pointer;
+        border-top: 1px solid #ffffff;
+        border-left: 1px solid #ffffff;
+        border-right: 1px solid #555;
+        border-bottom: 1px solid #555;
+    }
+
+        .btn-flat:active {
+            border-top: 1px solid #555;
+            border-left: 1px solid #555;
+            border-right: 1px solid #ffffff;
+            border-bottom: 1px solid #ffffff;
+        }
+
+
+</style>
+
+<div class="vb-form">
+    <div class="vb-title">Add Stock Order</div>
+
+    <div class="vb-body">
+
+        <!-- SEARCH SUPPLIER -->
+        <div class="frame product-frame">
+            <div class="vb-caption">Search supplier</div>
+
+            <div class="vb-row">
+                <label class="label">Supplier Name:</label>
+                <input class="vb-input" style="width:200px" @bind="txtProviderName" />
+                <span class="btn-ellipsis">...</span>
             </div>
 
-            <div class="totals-card">
-                <div class="d-flex gap-2 mb-1">
-                    <label class="w-50">Sales Tax (%)</label>
-                    <input class="form-control w-50" type="number" @bind="SalesTax" @oninput="e => RecalculateTotals()" />
-                </div>
-                <div class="d-flex gap-2 mb-2">
-                    <label class="w-50">Freight</label>
-                    <input class="form-control w-50" type="number" @bind="Freight" @oninput="e => RecalculateTotals()" />
-                </div>
+            <div class="vb-row">
+                <label class="label">Contact name:</label>
+                <input class="vb-input short" @bind="txtContactName" />
+                <label class="label" style="width:110px;">Contact last name:</label>
+                <input class="vb-input short" @bind="txtContactLastName" />
+            </div>
 
-                <div class="text-end">
-                    <div>Sub Total: @SubTotal.ToString("C")</div>
-                    <div>Total Tax: @TotalTax.ToString("C")</div>
-                    <div><strong>Total: @Total.ToString("C")</strong></div>
-                </div>
+            <div class="providers-list">
+                @foreach (var p in Providers)
+                {
+                    <div class="provider-item" @onclick="() => SelectProvider(p)">
+                        <strong>@p.CompanyName</strong> - @p.ContactFirstName @p.ContactLastName
+                    </div>
+                }
             </div>
         </div>
 
-        <div class="mt-3">
-            <button class="btn btn-primary" @onclick="Save">Save</button>
-            <button class="btn btn-success ms-2" @onclick="Approve" disabled="@(!CanApprove)">Approve (Add to Inventory)</button>
+        <!-- SUPPLIER SUMMARY -->
+        <div class="frame">
+            <div class="vb-row">
+                <label class="label">Supplier:</label>
+                <input class="vb-input" style="width:220px" readonly @bind="SelectedProviderName" />
+                <label class="label" style="width:70px;">Contact:</label>
+                <input class="vb-input short" readonly @bind="SelectedProviderContact" />
+            </div>
         </div>
-    </section>
+
+        <!-- NOTES -->
+        <div class="frame">
+            <div class="vb-caption">Notes</div>
+            <textarea class="vb-textarea" @bind="txtNotes"></textarea>
+            <div style="text-align:right;">
+                <span class="btn-ellipsis">...</span>
+            </div>
+        </div>
+
+        <!-- PRODUCT SEARCH -->
+        <div class="vb-row">
+            <input class="product-input" placeholder="Search product..." @bind="productQuery" />
+            <span class="btn-ellipsis">...</span>
+        </div>
+
+        <!-- PRODUCT GRID -->
+        <div class="frame">
+            <div class="product-grid"></div>
+        </div>
+
+        
+        <!-- ===== BOTTOM TOTALS (VB6 STYLE – FIXED FRAMES) ===== -->
+        <div style="display:flex; gap:12px; margin-top:4px;">
+
+            <!-- LEFT TOTALS -->
+            <div class="frame" style="width:4200px; height:110px; padding-top:8px;">
+                <div style="margin-bottom:6px;">
+                    <label class="label" style="width:120px;">Line quantity:</label>
+                    <input class="vb-input short" readonly value="@LineQuantity" />
+                </div>
+
+                <div style="margin-bottom:6px;">
+                    <label class="label" style="width:120px;">Sales Tax:</label>
+                    <input class="vb-input short" @bind="txtSalesTax" />
+                </div>
+
+                <div>
+                    <label class="label" style="width:120px;">Freight Charge:</label>
+                    <input class="vb-input short" @bind="txtFreightCharge" />
+                </div>
+            </div>
+
+            <!-- RIGHT TOTALS + ACTIONS -->
+            <div class="frame"
+                 style="width:360px; height:110px; padding-top:8px; position:relative;">
+
+                <div style="margin-bottom:6px;">
+                    <label class="label" style="width:110px;">Total Tax:</label>
+                    <input class="vb-input short" readonly value="@TotalTaxDisplay" />
+                </div>
+
+                <div>
+                    <label class="label" style="width:110px;">Sub Total:</label>
+                    <input class="vb-input short" readonly value="@SubTotalDisplay" />
+                </div>
+
+                <!-- BUTTONS ANCHORED LIKE VB6 -->
+                <div style="position:absolute; right:8px; bottom:6px;">
+                    <button class="btn-flat">Save</button>
+                    <button class="btn-flat" style="margin-left:6px;">Close</button>
+                </div>
+            </div>
+
+        </div>
+
+
+    </div>
 </div>
 
 @code {
-    // provider references
-    private ProviderSearch? providerSearch;
-    private List<Provider> Providers = new();
-    private Provider? selectedProvider;
-
-    // order header
-    private int currentOrderId = 0;
-    private string OrderIdDisplay => currentOrderId == 0 ? "-" : currentOrderId.ToString();
-    private string ReceivedBy = "system";
-    private string OrderDateDisplay = DateTime.UtcNow.ToString("g");
-
-    // supplier details (bound to UI)
-    private string SelectedProviderName = "";
-    private string SelectedProviderContactFirst = "";
-    private string SelectedProviderContactLast = "";
-
-    // notes
-    private string Notes { get; set; } = "";
-
-    // product selection
-    private bool showProductPicker = false;
-    private string ProductQuery = "";
-    private List<Product>? ProductResults;
-    private List<OrderLine> Lines = new();
-
-    // totals
-    private decimal SalesTax { get; set; } = 0m;
-    private decimal Freight { get; set; } = 0m;
-    private decimal SubTotal { get; set; } = 0m;
-    private decimal TotalTax { get; set; } = 0m;
-    private decimal Total { get; set; } = 0m;
+    private string txtProviderName { get; set; } = "";
+    private string txtContactName { get; set; } = "";
+    private string txtContactLastName { get; set; } = "";
+    private string SelectedProviderName { get; set; } = "";
+    private string SelectedProviderContact { get; set; } = "";
+    private string txtNotes { get; set; } = "";
+    private string productQuery { get; set; } = "";
+    private string txtSalesTax { get; set; } = "0";
+    private string txtFreightCharge { get; set; } = "0";
     private int LineQuantity { get; set; } = 0;
 
-    private bool CanApprove => currentOrderId != 0 && Lines.Any();
+    private string TotalTaxDisplay => "₹ 0.00";
+    private string SubTotalDisplay => "₹ 0.00";
 
-    protected override async Task OnInitializedAsync()
+    private List<Provider> Providers { get; set; } = new();
+
+    protected override void OnInitialized()
     {
-        // optionally load all providers to show list initially
-        Providers = await OrderService.SearchProvidersAsync("");
-    }
-
-    private async Task OnProviderSelected(int providerId)
-    {
-        selectedProvider = Providers.FirstOrDefault(p => p.ProviderId == providerId) ?? await OrderService.SearchProvidersAsync("").ContinueWith(t => t.Result.FirstOrDefault(p => p.ProviderId == providerId));
-        FillProviderFields(selectedProvider);
-        // create draft
-        var draft = await OrderService.CreateOrderDraftAsync(providerId, ReceivedBy);
-        currentOrderId = draft.OrderReceptionId;
-        OrderDateDisplay = draft.OrderDate.ToString("g");
-    }
-
-    private void FillProviderFields(Provider? p)
-    {
-        if (p == null) return;
-        SelectedProviderName = p.CompanyName;
-        SelectedProviderContactFirst = p.ContactFirstName;
-        SelectedProviderContactLast = p.ContactLastName;
-    }
-
-    private void SelectProviderFromList(Provider p) => FillProviderFields(p);
-    private void UseProvider(Provider p) => OnProviderSelected(p.ProviderId);
-
-    private void ToggleProductPicker()
-    {
-        showProductPicker = !showProductPicker;
-        if (showProductPicker) _ = OnProductSearch(null);
-    }
-
-    private async Task OnProductSearch(ChangeEventArgs? _)
-    {
-        ProductResults = await OrderService.SearchProductsAsync(ProductQuery ?? "");
-        StateHasChanged();
-    }
-
-    private void AddProductInline(Product p)
-    {
-        var existing = Lines.FirstOrDefault(l => l.ProductId == p.ProductId);
-        if (existing != null) existing.Quantity += 1;
-        else
+        Providers = new()
         {
-            Lines.Add(new OrderLine
-            {
-                ProductId = p.ProductId,
-                Product = p,
-                Quantity = 1,
-                UnitPrice = p.UnitPrice
-            });
-        }
-        RecalculateTotals();
-    }
-
-    private void UpdateLine(OrderLine line)
-    {
-        if (line.Quantity < 0) line.Quantity = 0;
-        RecalculateTotals();
-    }
-
-    private void RemoveLine(OrderLine line)
-    {
-        Lines.Remove(line);
-        RecalculateTotals();
-    }
-
-    private void RecalculateTotals()
-    {
-        SubTotal = Lines.Sum(l => l.LineTotal);
-        LineQuantity = Lines.Sum(l => l.Quantity);
-        TotalTax = SubTotal * (SalesTax / 100m);
-        Total = SubTotal + TotalTax + Freight;
-    }
-
-    private async Task Save()
-    {
-        if (selectedProvider == null) { /* show message */ return; }
-
-        var order = new BlazorServerApp.Models.OrderReception
-        {
-            OrderReceptionId = currentOrderId,
-            ProviderId = selectedProvider.ProviderId,
-            ReceivedBy = ReceivedBy,
-            OrderDate = DateTime.UtcNow,
-            Notes = Notes,
-            FreightCharge = Freight,
-            SalesTaxRate = SalesTax,
-            Lines = Lines
+            new Provider { ProviderId = 1, CompanyName = "ACME Supplies", ContactFirstName = "John", ContactLastName = "Doe" },
+            new Provider { ProviderId = 2, CompanyName = "Global Traders", ContactFirstName = "Ana", ContactLastName = "Smith" }
         };
-
-        await OrderService.SaveOrderAsync(order);
-        currentOrderId = order.OrderReceptionId;
     }
 
-    private async Task Approve()
+    private void SelectProvider(Provider p)
     {
-        if (!CanApprove) return;
-        await OrderService.ApproveOrderAsync(currentOrderId, ReceivedBy);
-        // refresh
-        Providers = await OrderService.SearchProvidersAsync("");
-        RecalculateTotals();
+        SelectedProviderName = p.CompanyName;
+        SelectedProviderContact = $"{p.ContactFirstName} {p.ContactLastName}";
     }
 }
